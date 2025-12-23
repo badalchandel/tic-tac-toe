@@ -8,6 +8,8 @@ let gameBoard = Array(9).fill("");
 let gameActive = true;
 let gameMode = "multiplayer";
 
+const minimaxCache = {};
+
 function checkWinner() {
   const winPatterns = [
     [0, 1, 2],
@@ -53,6 +55,8 @@ function resetGame() {
   });
   currentPlayer = "X";
   gameActive = true;
+
+  Object.keys(minimaxCache).forEach((key) => delete minimaxCache[key]);
 }
 
 boxes.forEach((box, index) => {
@@ -117,10 +121,17 @@ function getWinnerState(board) {
 }
 
 function minimax(board, depth, isMaximizing, alpha, beta) {
+  const boardKey = board.join("");
+  if (minimaxCache[boardKey]) {
+    return minimaxCache[boardKey];
+  }
+
   const winner = getWinnerState(board);
   if (winner === "O") return 10 - depth;
   if (winner === "X") return depth - 10;
   if (winner === "draw") return 0;
+
+  let result;
 
   if (isMaximizing) {
     let maxEval = -Infinity;
@@ -134,7 +145,7 @@ function minimax(board, depth, isMaximizing, alpha, beta) {
         if (beta <= alpha) break;
       }
     }
-    return maxEval;
+    result = maxEval;
   } else {
     let minEval = Infinity;
     for (let i = 0; i < 9; i++) {
@@ -147,10 +158,15 @@ function minimax(board, depth, isMaximizing, alpha, beta) {
         if (beta <= alpha) break;
       }
     }
-    return minEval;
+    result = minEval;
   }
+
+  minimaxCache[boardKey] = result;
+  return result;
 }
 
+// OLD CODE - COMMENTED OUT (Perfect Minimax Algorithm - Made Game Unbeatable)
+/*
 function computerMove() {
   if (!gameActive) return;
   let bestScore = -Infinity;
@@ -176,4 +192,93 @@ function computerMove() {
     checkWinner();
     currentPlayer = "X";
   }
+}
+*/
+
+// NEW CODE - Difficulty Levels: 90% Smart, 5% Medium, 5% Random
+function computerMove() {
+  if (!gameActive) return;
+
+  const randomNum = Math.random() * 100;
+
+  let moveIndex = -1;
+
+  if (randomNum < 97) {
+    moveIndex = getMiniMaxMove();
+  } else if (randomNum < 99) {
+    moveIndex = getMediumMove();
+  } else {
+    moveIndex = getRandomMove();
+  }
+
+  if (moveIndex >= 0) {
+    gameBoard[moveIndex] = "O";
+    const box = boxes[moveIndex];
+    if (box) {
+      box.textContent = "O";
+      box.classList.add("o-mark");
+    }
+    checkWinner();
+    currentPlayer = "X";
+  }
+}
+
+function getMiniMaxMove() {
+  for (let i = 0; i < 9; i++) {
+    if (gameBoard[i] === "") {
+      gameBoard[i] = "O";
+      if (getWinnerState(gameBoard) === "O") {
+        gameBoard[i] = "";
+        return i;
+      }
+      gameBoard[i] = "";
+    }
+  }
+
+  for (let i = 0; i < 9; i++) {
+    if (gameBoard[i] === "") {
+      gameBoard[i] = "X";
+      if (getWinnerState(gameBoard) === "X") {
+        gameBoard[i] = "";
+        return i;
+      }
+      gameBoard[i] = "";
+    }
+  }
+
+  let bestScore = -Infinity;
+  let bestMove = -1;
+  for (let i = 0; i < 9; i++) {
+    if (gameBoard[i] === "") {
+      gameBoard[i] = "O";
+      let score = minimax(gameBoard, 0, false, -Infinity, Infinity);
+      gameBoard[i] = "";
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = i;
+      }
+    }
+  }
+  return bestMove;
+}
+
+function getMediumMove() {
+  const priorityPositions = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+
+  for (let pos of priorityPositions) {
+    if (gameBoard[pos] === "") {
+      return pos;
+    }
+  }
+  return getRandomMove();
+}
+
+function getRandomMove() {
+  const emptyPositions = gameBoard
+    .map((val, idx) => (val === "" ? idx : null))
+    .filter((idx) => idx !== null);
+
+  if (emptyPositions.length === 0) return -1;
+
+  return emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
 }
